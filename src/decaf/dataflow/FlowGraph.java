@@ -6,10 +6,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.*;
 
 import decaf.tac.Functy;
 import decaf.tac.Tac;
 import decaf.tac.Tac.Kind;
+import decaf.tac.Temp;
 
 public class FlowGraph implements Iterable<BasicBlock> {
 
@@ -173,9 +175,40 @@ public class FlowGraph implements Iterable<BasicBlock> {
         return bbs.size();
     }
 
+    public boolean pushup(BasicBlock bb,BasicBlock bbn){
+//        System.println(bbn);
+        boolean changed = false;
+        for(int k:bbn.UChain.keySet()){
+            if(bb.DUChainHelperT.containsKey(k)){
+                if(bb.DUChain.get(new Pair(bb.DUChainHelper.get(k), bb.DUChainHelperT.get(k))).addAll(bbn.UChain.get(k))){
+                    changed = true  ;
+                }
+//                bbn.UChain.remove(k); //?
+            }else{
+                if(bb.UChain.containsKey(k)){
+                    if(bb.UChain.get(k).addAll(bbn.UChain.get(k))){
+                        changed = true;
+                    }
+                }else{
+                    Set<Integer> st = new TreeSet<Integer>();
+                    st.addAll(bbn.UChain.get(k));
+                    bb.UChain.put(k, st);
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    }
     public void analyzeLiveness() {
         for (BasicBlock bb : bbs) {
             bb.computeDefAndLiveUse();
+//            System.out.println("DEBUG");
+//            System.out.println(bb.bbNum);
+//            // debug
+//            for(int k:bb.OUTChain.keySet()){
+//                System.out.println(k);
+//                System.out.println(bb.OUTChain.get(k));
+//            }
         }
         boolean changed = true;
         do {
@@ -184,18 +217,124 @@ public class FlowGraph implements Iterable<BasicBlock> {
                 for (int i = 0; i < 2; i++) {
                     if (bb.next[i] >= 0) { // Not RETURN
                         bb.liveOut.addAll(bbs.get(bb.next[i]).liveIn);
+                        if(pushup(bb,bbs.get(bb.next[i]))){
+                            changed = true;
+                        }
+//                        for(int k:bbs.get(bb.next[i]).UChain.keySet()){
+//
+//                            if(bb.OUTChain.containsKey(k)){
+//                                bb.OUTChain.get(k).addAll(bbs.get(bb.next[i]).UChain.get(k));
+//                            }else{
+//                                Set<Integer> st = new TreeSet<Integer>();
+//                                st.addAll(bbs.get(bb.next[i]).UChain.get(k));
+//                                bb.OUTChain.put(k, st);
+//                            }
+//                        }
                     }
                 }
                 bb.liveOut.removeAll(bb.def);
+//                for(Temp op:bb.def){
+//                    if(bb.OUTChain.containsKey(op.id)){
+//                        bb.OUTChain.remove(op.id);
+//                    }
+//                }
                 if (bb.liveIn.addAll(bb.liveOut))
                     changed = true;
+//                for(int k:bb.OUTChain.keySet()){
+//                    if(bb.UChain.containsKey(k)){
+//                        bb.UChain.get(k).addAll(bb.OUTChain.get(k));
+//                    }else{
+//                        Set<Integer> st = new TreeSet<Integer>();
+//                        st.addAll(bb.OUTChain.get(k));
+//                        bb.UChain.put(k,st);
+//                    }
+//                }
                 for (int i = 0; i < 2; i++) {
                     if (bb.next[i] >= 0) { // Not RETURN
                         bb.liveOut.addAll(bbs.get(bb.next[i]).liveIn);
+//                        for(int k:bbs.get(bb.next[i]).UChain.keySet()){
+//                            if(bb.OUTChain.containsKey(k)){
+//                                bb.OUTChain.get(k).addAll(bbs.get(bb.next[i]).UChain.get(k));
+//                            }else{
+//                                Set<Integer> st = new TreeSet<Integer>();
+//                                st.addAll(bbs.get(bb.next[i]).UChain.get(k));
+//                                bb.OUTChain.put(k, st);
+//                            }
+//                        }
                     }
                 }
             }
         } while (changed);
+//        for(int T=0;T<1000;T++){
+//            changed = false;
+//            for (BasicBlock bb : bbs) {
+//                for (int i = 0; i < 2; i++) {
+//                    if (bb.next[i] >= 0) { // Not RETURN
+//                        bb.liveOut.addAll(bbs.get(bb.next[i]).liveIn);
+//                        pushup(bb,bbs.get(bb.next[i]));
+////                        for(int k:bbs.get(bb.next[i]).UChain.keySet()){
+////
+////                            if(bb.OUTChain.containsKey(k)){
+////                                bb.OUTChain.get(k).addAll(bbs.get(bb.next[i]).UChain.get(k));
+////                            }else{
+////                                Set<Integer> st = new TreeSet<Integer>();
+////                                st.addAll(bbs.get(bb.next[i]).UChain.get(k));
+////                                bb.OUTChain.put(k, st);
+////                            }
+////                        }
+//                    }
+//                }
+//                bb.liveOut.removeAll(bb.def);
+////                for(Temp op:bb.def){
+////                    if(bb.OUTChain.containsKey(op.id)){
+////                        bb.OUTChain.remove(op.id);
+////                    }
+////                }
+//                if (bb.liveIn.addAll(bb.liveOut))
+//                    changed = true;
+////                for(int k:bb.OUTChain.keySet()){
+////                    if(bb.UChain.containsKey(k)){
+////                        bb.UChain.get(k).addAll(bb.OUTChain.get(k));
+////                    }else{
+////                        Set<Integer> st = new TreeSet<Integer>();
+////                        st.addAll(bb.OUTChain.get(k));
+////                        bb.UChain.put(k,st);
+////                    }
+////                }
+//                for (int i = 0; i < 2; i++) {
+//                    if (bb.next[i] >= 0) { // Not RETURN
+//                        bb.liveOut.addAll(bbs.get(bb.next[i]).liveIn);
+////                        for(int k:bbs.get(bb.next[i]).UChain.keySet()){
+////                            if(bb.OUTChain.containsKey(k)){
+////                                bb.OUTChain.get(k).addAll(bbs.get(bb.next[i]).UChain.get(k));
+////                            }else{
+////                                Set<Integer> st = new TreeSet<Integer>();
+////                                st.addAll(bbs.get(bb.next[i]).UChain.get(k));
+////                                bb.OUTChain.put(k, st);
+////                            }
+////                        }
+//                    }
+//                }
+//            }
+//        }
+//        for (BasicBlock bb : bbs) {
+//            System.out.println("DEBUGXX");
+//            System.out.println(bb.bbNum);
+//            // debug
+//            for(int k:bb.UChain.keySet()){
+//                System.out.println(k);
+//                System.out.println(bb.UChain.get(k));
+//            }
+//        }
+//        for (BasicBlock bb : bbs) {
+//            for(Temp op : bb.def){
+//                if(bb.OUTChain.containsKey(op.id)){
+////                            System.out.println(bb.DUChainHelper.get(op.id));
+////                            System.out.println(bbn.UChain.get(op.id));
+//                    bb.DUChain.get(new Pair(bb.DUChainHelper.get(op.id), op)).addAll(bb.OUTChain.get(op.id));
+//                }
+//            }
+//        }
     }
 
     public void simplify() {

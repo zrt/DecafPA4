@@ -54,8 +54,11 @@ public class BasicBlock {
      * 表中的每一项 `Pair(p, A) -> ds` 表示 变量 `A` 在定值点 `p` 的 DU 链为 `ds`.
      * 这里 `p` 和 `ds` 中的每一项均指的定值点或引用点对应的那一条 TAC 的 `id`.
      */
-    private Map<Pair, Set<Integer>> DUChain;
-    private Map<Integer, Integer> DUChainHelper; // def变量id to tac id
+    public Map<Pair, Set<Integer>> DUChain;
+    public Map<Integer, Integer> DUChainHelper; // def变量id to tac id
+    public Map<Integer, Temp> DUChainHelperT; // def变量id to tac id
+    public Map<Integer, Set<Integer>> UChain;
+    public Map<Integer, Set<Integer>> OUTChain;
 
     public BasicBlock() {
         def = new TreeSet<Temp>(Temp.ID_COMPARATOR);
@@ -67,6 +70,9 @@ public class BasicBlock {
 
         DUChain = new TreeMap<Pair, Set<Integer>>(Pair.COMPARATOR);
         DUChainHelper = new TreeMap<Integer, Integer>();
+        DUChainHelperT = new TreeMap<Integer, Temp>();
+        UChain = new TreeMap<Integer, Set<Integer>>();  // live in position,  op.id -> tac.id
+        OUTChain =  new TreeMap<Integer, Set<Integer>>(); // live out
     }
 
     public void allocateTacIds() {
@@ -80,7 +86,12 @@ public class BasicBlock {
             DUChain.get(new Pair(DUChainHelper.get(op.id), op)).add(tac.id);
         }else{
             // UChain todo
-
+            if(UChain.containsKey(op.id)){
+                UChain.get(op.id).add(tac.id);
+            }else{
+                UChain.put(op.id, new TreeSet<Integer>());
+                UChain.get(op.id).add(tac.id);
+            }
         }
     }
     public void adduseI(Temp op, int tacid){
@@ -88,7 +99,12 @@ public class BasicBlock {
             DUChain.get(new Pair(DUChainHelper.get(op.id), op)).add(tacid);
         }else{
             // UChain todo
-
+            if(UChain.containsKey(op.id)){
+                UChain.get(op.id).add(tacid);
+            }else{
+                UChain.put(op.id, new TreeSet<Integer>());
+                UChain.get(op.id).add(tacid);
+            }
         }
     }
 
@@ -96,6 +112,7 @@ public class BasicBlock {
 //        System.out.println(op);
 //        System.out.println(tac);
         DUChainHelper.put(op.id, tac.id);
+        DUChainHelperT.put(op.id, op);
         DUChain.put(new Pair(tac.id, op), new TreeSet<Integer>());
     }
 
