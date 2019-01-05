@@ -55,6 +55,7 @@ public class BasicBlock {
      * 这里 `p` 和 `ds` 中的每一项均指的定值点或引用点对应的那一条 TAC 的 `id`.
      */
     private Map<Pair, Set<Integer>> DUChain;
+    private Map<Integer, Integer> DUChainHelper; // def变量id to tac id
 
     public BasicBlock() {
         def = new TreeSet<Temp>(Temp.ID_COMPARATOR);
@@ -65,6 +66,7 @@ public class BasicBlock {
         asms = new ArrayList<Asm>();
 
         DUChain = new TreeMap<Pair, Set<Integer>>(Pair.COMPARATOR);
+        DUChainHelper = new TreeMap<Integer, Integer>();
     }
 
     public void allocateTacIds() {
@@ -72,6 +74,29 @@ public class BasicBlock {
             tac.id = IDAllocator.apply();
         }
         endId = IDAllocator.apply();
+    }
+    public void adduse(Temp op, Tac tac){
+        if(DUChainHelper.containsKey(op.id)){
+            DUChain.get(new Pair(DUChainHelper.get(op.id), op)).add(tac.id);
+        }else{
+            // UChain todo
+
+        }
+    }
+    public void adduseI(Temp op, int tacid){
+        if(DUChainHelper.containsKey(op.id)){
+            DUChain.get(new Pair(DUChainHelper.get(op.id), op)).add(tacid);
+        }else{
+            // UChain todo
+
+        }
+    }
+
+    public void adddef(Temp op, Tac tac){
+//        System.out.println(op);
+//        System.out.println(tac);
+        DUChainHelper.put(op.id, tac.id);
+        DUChain.put(new Pair(tac.id, op), new TreeSet<Integer>());
     }
 
     public void computeDefAndLiveUse() {
@@ -90,7 +115,7 @@ public class BasicBlock {
                 case NEQ:
                 case LEQ:
                 case LES:
-                /* use op1 and op2, def op0 */
+                    /* use op1 and op2, def op0 */
                     if (tac.op1.lastVisitedBB != bbNum) {
                         liveUse.add(tac.op1);
                         tac.op1.lastVisitedBB = bbNum;
@@ -103,13 +128,19 @@ public class BasicBlock {
                         def.add(tac.op0);
                         tac.op0.lastVisitedBB = bbNum;
                     }
+                    // op1 use
+                    adduse(tac.op1,tac);
+                    // op2 use
+                    adduse(tac.op2,tac);
+                    // op3 def
+                    adddef(tac.op0,tac);
                     break;
                 case NEG:
                 case LNOT:
                 case ASSIGN:
                 case INDIRECT_CALL:
                 case LOAD:
-				/* use op1, def op0 */
+                    /* use op1, def op0 */
                     if (tac.op1.lastVisitedBB != bbNum) {
                         liveUse.add(tac.op1);
                         tac.op1.lastVisitedBB = bbNum;
@@ -119,21 +150,26 @@ public class BasicBlock {
                         def.add(tac.op0);
                         tac.op0.lastVisitedBB = bbNum;
                     }
+                    adduse(tac.op1, tac);
+                    if(tac.op0 != null)
+                        adddef(tac.op0, tac);
                     break;
+                case RETURN:
                 case LOAD_VTBL:
                 case DIRECT_CALL:
-                case RETURN:
                 case LOAD_STR_CONST:
                 case LOAD_IMM4:
-				/* def op0 */
+                    /* def op0 */
                     if (tac.op0 != null && tac.op0.lastVisitedBB != bbNum) {  // in DIRECT_CALL with return type VOID,
                         // tac.op0 is null
                         def.add(tac.op0);
                         tac.op0.lastVisitedBB = bbNum;
                     }
+                    if(tac.op0 != null )
+                        adddef(tac.op0, tac);
                     break;
                 case STORE:
-				/* use op0 and op1*/
+                    /* use op0 and op1*/
                     if (tac.op0.lastVisitedBB != bbNum) {
                         liveUse.add(tac.op0);
                         tac.op0.lastVisitedBB = bbNum;
@@ -142,16 +178,19 @@ public class BasicBlock {
                         liveUse.add(tac.op1);
                         tac.op1.lastVisitedBB = bbNum;
                     }
+                    adduse(tac.op0, tac);
+                    adduse(tac.op1, tac);
                     break;
                 case PARM:
-				/* use op0 */
+                    /* use op0 */
                     if (tac.op0.lastVisitedBB != bbNum) {
                         liveUse.add(tac.op0);
                         tac.op0.lastVisitedBB = bbNum;
                     }
+                    adduse(tac.op0, tac);
                     break;
                 default:
-				/* BRANCH MEMO MARK PARM*/
+                    /* BRANCH MEMO MARK PARM*/
                     break;
             }
         }
@@ -159,6 +198,8 @@ public class BasicBlock {
             liveUse.add(var);
             var.lastVisitedBB = bbNum;
         }
+        if(var!=null)
+            adduseI(var,endId);
         liveIn.addAll(liveUse);
     }
 
